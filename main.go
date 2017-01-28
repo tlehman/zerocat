@@ -13,9 +13,7 @@ func main() {
 	// log.SetOutput(devNull)
 	server := createServer()
 	defer server.Shutdown()
-	//performLookup()
-	// send input to output
-
+	//query()
 	io.Copy(os.Stdout, os.Stdin)
 }
 
@@ -34,7 +32,7 @@ func createServer() *mdns.Server {
 	return server
 }
 
-func performLookup() {
+func query() {
 	// Make a channel for results and start listening
 	entriesCh := make(chan *mdns.ServiceEntry, 4)
 	go func() {

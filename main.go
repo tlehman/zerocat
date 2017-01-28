@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"github.com/hashicorp/mdns"
+	"log"
 	"os"
 )
 
 func main() {
+	// turn off logging
+	devNull, _ := os.Open(os.DevNull)
+	log.SetOutput(devNull)
 	server := createServer()
 	defer server.Shutdown()
 	performLookup()

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/hashicorp/mdns"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -22,7 +23,6 @@ func main() {
 	server = createServer()
 	defer server.Shutdown()
 	query()
-	//io.Copy(os.Stdout, os.Stdin)
 }
 
 func createServer() *mdns.Server {
@@ -47,7 +47,6 @@ func query() {
 		for entry := range entriesCh {
 			if entry.Host[0:len(entry.Host)-1] != host &&
 				entry.Port == port {
-				fmt.Printf("Got new entry: %v, %v, %v\n", entry.Info, entry.AddrV4, entry.Port)
 				pipe(entry.AddrV4)
 			}
 		}
@@ -63,6 +62,32 @@ func query() {
 	close(entriesCh)
 }
 
+// Spawn two goroutines, one to listen and read the connection,
+// and another to dial and write to the connection
 func pipe(addr net.IP) {
 	alive = false
+	go listenAndRead()
+	go dialAndWrite(addr)
+}
+
+func listenAndRead() {
+	laddr := fmt.Sprintf("0.0.0.0:%d", port)
+	listener, _ := net.Listen("tcp", laddr)
+	conn, err := listener.Accept()
+	if err != nil && conn != nil {
+		io.Copy(os.Stdout, conn)
+		conn.Close()
+	} else {
+		fmt.Printf("listening connection to %v failed: %v", laddr, err)
+	}
+}
+
+func dialAndWrite(addr net.IP) {
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", addr, port))
+	if err != nil && conn != nil {
+		io.Copy(conn, os.Stdin)
+		conn.Close()
+	} else {
+		fmt.Printf("dialing connection to %v failed: %v", addr, err)
+	}
 }

@@ -4,17 +4,22 @@ import (
 	"fmt"
 	"github.com/hashicorp/mdns"
 	"log"
+	"net"
 	"os"
 	"time"
 )
 
+const port = 8000
+
 var host string
+var server *mdns.Server
+var alive bool = true
 
 func main() {
 	// turn off logging
 	devNull, _ := os.Open(os.DevNull)
 	log.SetOutput(devNull)
-	server := createServer()
+	server = createServer()
 	defer server.Shutdown()
 	query()
 	//io.Copy(os.Stdout, os.Stdin)
@@ -40,14 +45,15 @@ func query() {
 	entriesCh := make(chan *mdns.ServiceEntry, 4)
 	go func() {
 		for entry := range entriesCh {
-			if entry.Host[0:len(entry.Host)-1] != host {
-				fmt.Printf("Got new entry: %v, %v\n", entry.AddrV4, entry.Port)
+			if entry.Host[0:len(entry.Host)-1] != host &&
+				entry.Port == port {
+				fmt.Printf("Got new entry: %v, %v, %v\n", entry.Info, entry.AddrV4, entry.Port)
+				pipe(entry.AddrV4)
 			}
 		}
 	}()
 
-	for {
-		// Start the lookup
+	for alive {
 		mdns.Query(&mdns.QueryParam{
 			Service: "_zerocat._tcp",
 			Entries: entriesCh,
@@ -55,4 +61,8 @@ func query() {
 		time.Sleep(5)
 	}
 	close(entriesCh)
+}
+
+func pipe(addr net.IP) {
+	alive = false
 }
